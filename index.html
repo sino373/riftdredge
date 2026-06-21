@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>RIFT DREDGE</title>
+<style>
+:root{
+  --void:#05080f; --void2:#0a1018; --panel:#0e1622; --panel2:#13202f;
+  --line:#1d2d40; --teal:#2ee6c7; --cyan:#39c6ff; --gold:#ffcc44;
+  --red:#ff4d5e; --purple:#b06bff; --green:#5be07a; --blue:#5aa9ff;
+  --text:#dbe7f2; --text2:#7d93a8; --text3:#46586b;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:radial-gradient(120% 90% at 50% -10%,#0c1828 0%,var(--void) 55%);
+  color:var(--text); font-family:"DejaVu Sans Mono",ui-monospace,Menlo,Consolas,monospace;
+  font-size:14px; line-height:1.5; overflow-x:hidden;
+}
+#app{max-width:1180px;margin:0 auto;padding:14px 14px 60px;display:flex;flex-direction:column;gap:14px}
+.head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:10px}
+.logo{font-size:1.7rem;font-weight:800;letter-spacing:.18em;color:var(--teal);text-shadow:0 0 22px rgba(46,230,199,.35)}
+.logo b{color:var(--cyan)}
+.tag{color:var(--text3);font-size:.72rem;letter-spacing:.22em}
+.wallet{margin-left:auto;display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.coin{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
+.coin .v{font-size:1.05rem;font-weight:700}
+.coin .l{font-size:.6rem;letter-spacing:.16em;color:var(--text3)}
+.coin.scrap .v{color:var(--gold)} .coin.core .v{color:var(--cyan)} .coin.fold .v{color:var(--purple)}
+
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:14px}
+@media(max-width:860px){.grid{grid-template-columns:1fr}}
+
+.card{background:linear-gradient(180deg,var(--panel) 0,var(--void2) 100%);border:1px solid var(--line);border-radius:12px;padding:14px}
+.sb-title{font-size:.65rem;letter-spacing:.2em;color:var(--text3);margin-bottom:10px;text-transform:uppercase}
+
+/* DIVE CONSOLE */
+.console{display:flex;gap:16px}
+.gaugewrap{flex:0 0 76px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.gauge{position:relative;width:46px;height:300px;border:1px solid var(--line);border-radius:24px;background:#070d15;overflow:hidden;box-shadow:inset 0 0 18px rgba(0,0,0,.6)}
+.gfill{position:absolute;left:0;right:0;bottom:0;height:0%;background:var(--teal);transition:height .25s,background .25s;border-radius:0 0 22px 22px}
+.gfill.warn{background:var(--gold)} .gfill.crit{background:var(--red)}
+.gtick{position:absolute;left:0;right:0;height:1px;background:rgba(255,255,255,.07)}
+.gaugewrap .glab{font-size:.55rem;letter-spacing:.14em;color:var(--text3);text-align:center}
+.gpct{font-size:.95rem;font-weight:700;color:var(--teal)} .gpct.warn{color:var(--gold)} .gpct.crit{color:var(--red)}
+@keyframes pulse{0%,100%{opacity:.55}50%{opacity:1}}
+.gauge.danger{animation:pulse .55s infinite}
+.gauge.danger2{animation:pulse .3s infinite}
+
+.dive{flex:1;display:flex;flex-direction:column;min-width:0}
+.depthrow{display:flex;align-items:baseline;gap:12px}
+.depthnum{font-size:3.4rem;font-weight:800;line-height:.9;color:var(--text);letter-spacing:-.02em}
+.depthlab{font-size:.62rem;letter-spacing:.2em;color:var(--text3)}
+.haul{margin-top:6px;font-size:.82rem;color:var(--text2)}
+.haul b{color:var(--gold);font-weight:700}
+.statline{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:.7rem;color:var(--text3)}
+.statline b{color:var(--text);font-weight:600}
+.riskbadge{font-size:.7rem;color:var(--text3)} .riskbadge b{color:var(--red)}
+
+.btnrow{display:flex;gap:10px;margin-top:14px}
+.btn{flex:1;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-family:inherit;font-size:.8rem;font-weight:700;letter-spacing:.08em;padding:14px 10px;border-radius:9px;cursor:pointer;transition:.12s;text-transform:uppercase}
+.btn:hover{border-color:var(--teal);box-shadow:0 0 0 1px var(--teal) inset}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.38;cursor:not-allowed;box-shadow:none;border-color:var(--line)}
+.btn.descend{background:linear-gradient(180deg,#123244,#0a1c28);border-color:#1d4a5e;color:var(--cyan)}
+.btn.descend:hover{border-color:var(--cyan);box-shadow:0 0 18px rgba(57,198,255,.25)}
+.btn.extract{background:linear-gradient(180deg,#2a2410,#16130a);border-color:#5e4d1d;color:var(--gold)}
+.btn.extract:hover{border-color:var(--gold);box-shadow:0 0 18px rgba(255,204,68,.22)}
+.btn.sm{padding:8px 10px;font-size:.7rem;flex:none}
+
+.feed{margin-top:14px;border-top:1px solid var(--line);padding-top:10px;max-height:150px;overflow:auto;display:flex;flex-direction:column;gap:4px}
+.feed::-webkit-scrollbar{width:6px}.feed::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+.fitem{display:flex;align-items:center;gap:8px;font-size:.76rem;animation:slidein .25s}
+@keyframes slidein{from{opacity:0;transform:translateX(-8px)}to{opacity:1}}
+.fitem .em{font-size:.95rem}
+.fitem .nm{color:var(--text)} .fitem .val{margin-left:auto;color:var(--gold);font-weight:600}
+.fitem .tg{font-size:.6rem;letter-spacing:.1em;padding:1px 5px;border-radius:4px;border:1px solid currentColor}
+
+/* tabs */
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px}
+.tab{font-size:.68rem;letter-spacing:.12em;padding:7px 11px;border:1px solid var(--line);border-radius:7px;background:var(--void2);color:var(--text2);cursor:pointer;text-transform:uppercase}
+.tab.on{color:var(--teal);border-color:var(--teal);background:rgba(46,230,199,.08)}
+.pane{display:none} .pane.on{display:block}
+
+.up{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #11202e}
+.up:last-child{border-bottom:0}
+.up .ic{font-size:1.2rem;flex:0 0 26px;text-align:center}
+.up .body{flex:1;min-width:0}
+.up .nm{font-size:.82rem;font-weight:600}
+.up .ds{font-size:.66rem;color:var(--text2)} .up .ds b{color:var(--teal);font-weight:600}
+.up .lv{font-size:.62rem;color:var(--text3)}
+.buy{flex:0 0 auto;border:1px solid var(--line);background:var(--panel2);color:var(--gold);font-family:inherit;font-size:.7rem;font-weight:700;padding:8px 11px;border-radius:7px;cursor:pointer;white-space:nowrap}
+.buy:hover{border-color:var(--gold)} .buy:disabled{opacity:.35;cursor:not-allowed;color:var(--text3)}
+.buy.core{color:var(--cyan)} .buy.core:hover{border-color:var(--cyan)}
+
+.codexgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px}
+.cx{aspect-ratio:1;border:1px solid var(--line);border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:var(--void2);cursor:default;position:relative}
+.cx .e{font-size:1.4rem;filter:grayscale(1) brightness(.5)}
+.cx.found .e{filter:none}
+.cx .d{font-size:.55rem;color:var(--text3)}
+.cx .tip{display:none;position:absolute;bottom:104%;left:50%;transform:translateX(-50%);background:#05090f;border:1px solid var(--line);border-radius:7px;padding:7px 9px;width:150px;z-index:9;font-size:.66rem;text-align:center}
+.cx:hover .tip{display:block}
+.cx .tip .tn{font-weight:700;color:var(--text)} .cx .tip .tt{font-size:.58rem;letter-spacing:.1em}
+
+.rec{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #11202e;font-size:.8rem}
+.rec .l{color:var(--text2)} .rec .v{font-weight:700}
+
+.setrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #11202e;font-size:.78rem;flex-wrap:wrap}
+.setrow label{color:var(--text2);flex:1;min-width:140px}
+.setrow input[type=range]{flex:1;min-width:120px;accent-color:var(--teal)}
+.setrow .vv{font-weight:700;color:var(--teal);min-width:54px;text-align:right}
+.toggle{width:42px;height:22px;border-radius:12px;background:var(--line);position:relative;cursor:pointer;transition:.15s;flex:0 0 auto}
+.toggle.on{background:var(--teal)}
+.toggle .k{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.15s}
+.toggle.on .k{left:22px}
+
+#toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;z-index:50;align-items:center;pointer-events:none}
+.tm{background:#05090f;border:1px solid var(--teal);color:var(--text);padding:9px 16px;border-radius:8px;font-size:.78rem;animation:tin .25s;box-shadow:0 6px 24px rgba(0,0,0,.5)}
+.tm.bad{border-color:var(--red)} .tm.good{border-color:var(--gold)}
+@keyframes tin{from{opacity:0;transform:translateY(10px)}to{opacity:1}}
+
+.flash{position:fixed;inset:0;background:var(--red);opacity:0;pointer-events:none;z-index:40;transition:opacity .12s}
+.flash.go{opacity:.32}
+.foldbox{border:1px solid var(--purple);border-radius:10px;padding:12px;margin-bottom:12px;background:rgba(176,107,255,.06)}
+.foldbox .ft{color:var(--purple);font-weight:700;letter-spacing:.1em;font-size:.8rem}
+.tiny{font-size:.66rem;color:var(--text3);margin-top:4px}
+a.link{color:var(--cyan);cursor:pointer;text-decoration:underline}
+.zonelab{font-size:.66rem;letter-spacing:.24em;color:var(--teal);margin-top:2px;font-weight:700;transition:color .3s}
+.achgrid{display:flex;flex-direction:column;gap:6px}
+.ach{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--void2);opacity:.5}
+.ach.got{opacity:1;border-color:var(--gold)}
+.ach .ae{font-size:1.1rem;flex:0 0 22px;text-align:center}
+.ach .an{font-size:.8rem;font-weight:600}
+.ach .ad{font-size:.64rem;color:var(--text2)}
+.ach .ab{margin-left:auto;font-size:.6rem;color:var(--gold);text-align:right;white-space:nowrap}
+.evt-overlay{position:fixed;inset:0;background:rgba(2,5,10,.82);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:60;padding:20px}
+.evt-overlay.on{display:flex;animation:tin .2s}
+.evt-box{background:linear-gradient(180deg,var(--panel2),var(--void2));border:1px solid var(--purple);border-radius:14px;padding:22px;max-width:440px;width:100%;text-align:center;box-shadow:0 0 40px rgba(176,107,255,.25)}
+.evt-em{font-size:2.6rem;line-height:1}
+.evt-nm{font-size:1.15rem;font-weight:800;letter-spacing:.08em;color:var(--purple);margin:6px 0}
+.evt-desc{font-size:.82rem;color:var(--text2);margin-bottom:16px}
+.evt-choices{display:flex;flex-direction:column;gap:8px}
+.evt-choices .btn{flex:none;width:100%;text-transform:none;letter-spacing:.02em;font-size:.78rem}
+</style>
+</head>
+<body>
+<div class="flash" id="flash"></div>
+<div id="app">
+  <div class="head">
+    <div>
+      <div class="logo">RIFT <b>DREDGE</b></div>
+      <div class="tag">PRESS-YOUR-LUCK SALVAGE DESCENT</div>
+    </div>
+    <div class="wallet">
+      <div class="coin scrap"><span class="v" id="w-scrap">0</span><span class="l">SCRAP</span></div>
+      <div class="coin core"><span class="v" id="w-core">0</span><span class="l">CORES</span></div>
+      <div class="coin fold"><span class="v" id="w-fold">0</span><span class="l">FOLDS</span></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- LEFT: DIVE CONSOLE -->
+    <div class="card">
+      <div class="sb-title">// Dive Console</div>
+      <div class="console">
+        <div class="gaugewrap">
+          <div class="gauge" id="gauge"><div class="gfill" id="gfill"></div></div>
+          <div class="gpct" id="gpct">0%</div>
+          <div class="glab">INSTABILITY</div>
+        </div>
+        <div class="dive">
+          <div class="depthrow">
+            <div class="depthnum" id="depth">0</div>
+            <div class="depthlab">DEPTH<br>LAYERS</div>
+          </div>
+          <div class="zonelab" id="zonelab">THE SHALLOWS</div>
+          <div class="haul">Run haul: <b id="haul">0</b> scrap <span id="haulcore" style="color:var(--cyan)"></span></div>
+          <div class="statline">
+            <span>luck <b id="s-luck">1.0×</b></span>
+            <span>value <b id="s-val">1.0×</b></span>
+            <span>rupture <b id="s-risk" style="color:var(--red)">0%</b></span>
+          </div>
+          <div class="btnrow">
+            <button class="btn descend" id="btn-descend">▼ Descend</button>
+            <button class="btn extract" id="btn-extract">▲ Extract</button>
+          </div>
+          <div class="statline" style="margin-top:10px">
+            <span>auto-dive <b id="auto-state">off</b></span>
+            <span id="auto-detail"></span>
+          </div>
+          <div class="feed" id="feed"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: TABS -->
+    <div class="card">
+      <div class="tabs">
+        <div class="tab on" data-t="up">Upgrades</div>
+        <div class="tab" data-t="core">Core Lab</div>
+        <div class="tab" data-t="codex">Codex</div>
+        <div class="tab" data-t="ach">Awards</div>
+        <div class="tab" data-t="rec">Records</div>
+        <div class="tab" data-t="set">Settings</div>
+      </div>
+
+      <div class="pane on" id="pane-up"></div>
+
+      <div class="pane" id="pane-core">
+        <div class="foldbox" id="foldbox"></div>
+        <div id="core-list"></div>
+      </div>
+
+      <div class="pane" id="pane-codex">
+        <div class="tiny" style="margin-bottom:8px">Discover every item in a tier for a permanent bonus. <span id="codex-count"></span></div>
+        <div class="codexgrid" id="codexgrid"></div>
+      </div>
+
+      <div class="pane" id="pane-ach"></div>
+
+      <div class="pane" id="pane-rec"></div>
+
+      <div class="pane" id="pane-set">
+        <div class="sb-title">// Auto-Dive (idle)</div>
+        <div class="setrow">
+          <label>Enable auto-dive</label>
+          <div class="toggle" id="t-auto"><div class="k"></div></div>
+        </div>
+        <div class="setrow">
+          <label>Auto-extract at instability</label>
+          <input type="range" id="r-instab" min="10" max="95" step="5" value="55">
+          <span class="vv" id="v-instab">55%</span>
+        </div>
+        <div class="setrow">
+          <label>...or after this many descents</label>
+          <input type="range" id="r-count" min="3" max="60" step="1" value="20">
+          <span class="vv" id="v-count">20</span>
+        </div>
+        <div class="tiny">Auto-dive descends on a timer and extracts the moment EITHER limit is hit — so it never risks a rupture you didn't sign up for. (Requires the Auto-Diver upgrade.)</div>
+        <div class="sb-title" style="margin-top:16px">// Data</div>
+        <div class="btnrow">
+          <button class="btn sm" id="btn-save">Save now</button>
+          <button class="btn sm" id="btn-export">Export</button>
+          <button class="btn sm" id="btn-import">Import</button>
+          <button class="btn sm" id="btn-reset" style="color:var(--red)">Hard reset</button>
+        </div>
+        <div class="tiny" id="save-note"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+<div class="evt-overlay" id="evt-overlay">
+  <div class="evt-box">
+    <div class="evt-em" id="evt-em">♨️</div>
+    <div class="evt-nm" id="evt-nm">Event</div>
+    <div class="evt-desc" id="evt-desc"></div>
+    <div class="evt-choices" id="evt-choices"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============ RIFT DREDGE ============ */
+const SAVE_KEY="riftdredge_v1";
+
+/* ---- tiers ---- */
+const TIERS={
+  debris   :{nm:"DEBRIS",     col:"#7d93a8", w:1000, val:1},
+  salvage  :{nm:"SALVAGE",    col:"#5be07a", w:320,  val:3.5},
+  relic    :{nm:"RELIC",      col:"#5aa9ff", w:80,   val:12},
+  anomaly  :{nm:"ANOMALY",    col:"#b06bff", w:18,   val:45},
+  artifact :{nm:"ARTIFACT",   col:"#ffcc44", w:3.2,  val:185},
+  singular :{nm:"SINGULARITY",col:"#39c6ff", w:0.34, val:920},
+};
+const TIER_ORDER=["debris","salvage","relic","anomaly","artifact","singular"];
+
+/* ---- items (the Codex) — minD gates depth ---- */
+const ITEMS=[
+  ["Rusted Plating","🔩","debris",1],["Coolant Sludge","🛢️","debris",1],
+  ["Cracked Panel","🪟","debris",1],["Frayed Cable","🧵","debris",2],
+  ["Power Cell","🔋","salvage",2],["Hull Fragment","🛡️","salvage",2],
+  ["Nav Chip","💾","salvage",3],["Servo Arm","🦾","salvage",4],
+  ["Black Box","📦","relic",4],["Cryo Pod","❄️","relic",5],
+  ["Reactor Rod","☢️","relic",6],["Drift Beacon","📡","relic",6],
+  ["Phase Crystal","🔮","anomaly",7],["Echo Shard","🌀","anomaly",8],
+  ["Drift Bloom","🌸","anomaly",8],["Null Core","🕳️","anomaly",9,1],
+  ["Star Forge","🌟","artifact",10],["Helix Drive","🧬","artifact",12],
+  ["Void Lens","🛰️","artifact",11,2],["Aeon Plate","🪐","artifact",12,1],
+  ["Heart of the Rift","💎","singular",13,5],["Last Light","🕯️","singular",16,6],
+  ["Folded Sun","☀️","singular",15,8],["Origin Seed","🌱","singular",18,10],
+];
+// item = {nm,em,tier,minD,core}
+const ITEMDEF=ITEMS.map(a=>({nm:a[0],em:a[1],tier:a[2],minD:a[3],core:a[4]||0}));
+
+/* ---- rift zones (depth bands) ---- */
+const ZONES=[
+  {d:0, nm:"THE SHALLOWS",      col:"#5be07a"},
+  {d:5, nm:"DRIFT FIELDS",      col:"#39c6ff"},
+  {d:10,nm:"THE MIDNIGHT ZONE", col:"#b06bff"},
+  {d:16,nm:"THE CRUSH",         col:"#ffcc44"},
+  {d:24,nm:"SINGULARITY SHELF", col:"#ff4d5e"},
+];
+function zoneFor(d){ let z=ZONES[0],i=0; ZONES.forEach((x,k)=>{if(d>=x.d){z=x;i=k;}}); return {z,i}; }
+
+/* ---- achievements (permanent bonuses) ---- */
+const ACHS=[
+  {id:"first", nm:"First Descent",  ds:"Launch your first dive",   chk:s=>s.rec.dives>=1,      bv:0,   bl:0},
+  {id:"d10",   nm:"Into the Dark",  ds:"Reach depth 10",           chk:s=>s.rec.deepest>=10,   bv:.03, bl:0},
+  {id:"d20",   nm:"Crushing It",    ds:"Reach depth 20",           chk:s=>s.rec.deepest>=20,   bv:0,   bl:.05},
+  {id:"d30",   nm:"Shelf Diver",    ds:"Reach depth 30",           chk:s=>s.rec.deepest>=30,   bv:.08, bl:0},
+  {id:"haul",  nm:"Hauler",         ds:"Bank 10K in one extract",  chk:s=>s.rec.bigHaul>=1e4,  bv:.05, bl:0},
+  {id:"loss",  nm:"Acceptable Losses",ds:"Rupture 10 drones",      chk:s=>s.rec.ruptures>=10,  bv:0,   bl:.04},
+  {id:"fold1", nm:"Folded",         ds:"Fold the rift once",       chk:s=>s.folds>=1,          bv:.05, bl:0},
+  {id:"fold5", nm:"Recursion",      ds:"Fold 5 times",             chk:s=>s.folds>=5,          bv:0,   bl:.10},
+  {id:"cat",   nm:"Cataloguer",     ds:"Discover 12 items",        chk:s=>Object.keys(s.found).length>=12, bv:0, bl:.05},
+  {id:"comp",  nm:"Completionist",  ds:"Discover all 24 items",    chk:s=>Object.keys(s.found).length>=24, bv:.15,bl:.15},
+  {id:"wyrm",  nm:"Wyrm-Touched",   ds:"Dredge the Dredgewyrm's wake", chk:s=>!!(s.flags&&s.flags.wyrm), bv:.10, bl:0},
+  {id:"rich",  nm:"Tycoon",         ds:"Bank 1M lifetime scrap",   chk:s=>s.rec.lifeScrap>=1e6,bv:0,   bl:.08},
+];
+function achMult(kind){
+  let v=1; ACHS.forEach(a=>{ if(S.ach&&S.ach[a.id]) v*=1+(kind==="luck"?a.bl:a.bv); }); return v;
+}
+function checkAch(){
+  let changed=false;
+  ACHS.forEach(a=>{ if(!(S.ach&&S.ach[a.id]) && a.chk(S)){ if(!S.ach)S.ach={}; S.ach[a.id]=1; changed=true;
+    toast(`★ ${a.nm} unlocked`+( (a.bv||a.bl)?` — ${a.bv?`+${Math.round(a.bv*100)}% value`:""}${a.bv&&a.bl?", ":""}${a.bl?`+${Math.round(a.bl*100)}% luck`:""}`:"") ,"good"); } });
+  if(changed){ renderAch&&renderAch(); }
+}
+
+/* ---- mid-dive events ---- */
+let pendingEvent=null, runEcho=1;
+const EVENTS=[
+  {nm:"Pressure Vent", em:"♨️", min:2,
+   desc:"A hairline fissure could bleed off pressure — or blow back in your face.",
+   ch:[
+     {t:"Vent safely  (−14% instability)", fn:()=>{ S.instab=Math.max(0,S.instab-14); }},
+     {t:"Force the vent  (−30%, but 28% backfire +18%)", fn:()=>{ if(Math.random()<0.28){ S.instab=Math.min(100,S.instab+18); toast("Backfire! +18% instability","bad"); } else { S.instab=Math.max(0,S.instab-30); toast("Clean vent, −30%","good"); } }},
+   ]},
+  {nm:"Sealed Cache", em:"📦", min:3,
+   desc:"A pressurised cache hums in the silt. Cracking it rattles the whole drone.",
+   ch:[
+     {t:"Crack it open  (guaranteed Relic+, +12%)", fn:()=>{ forceFind(["relic","anomaly","artifact"]); S.instab=Math.min(100,S.instab+12); }},
+     {t:"Leave it sealed", fn:()=>{}},
+   ]},
+  {nm:"Echo Bloom", em:"🌀", min:4,
+   desc:"A resonance field flickers. It could amplify your very next find.",
+   ch:[
+     {t:"Absorb it  (next find ×3 value, +9%)", fn:()=>{ runEcho=3; S.instab=Math.min(100,S.instab+9); toast("Resonance charged — next find ×3","good"); }},
+     {t:"Drift past", fn:()=>{}},
+   ]},
+  {nm:"Derelict Beacon", em:"📡", min:2,
+   desc:"An old rescue beacon, still broadcasting a credit cache to no one.",
+   ch:[
+     {t:"Collect the cache", fn:()=>{ const g=Math.round(35*(1+S.depth)*valMult()); S.haul+=g; toast(`+${fmt(g)} scrap`,"good"); }},
+   ]},
+  {nm:"The Dredgewyrm", em:"🐉", min:14, rare:true,
+   desc:"Something enormous uncoils in the dark. It has already noticed you.",
+   ch:[
+     {t:"Run for the surface  (extract now)", raw:true, fn:()=>{ pendingEvent=null; closeEvent(); extract(); }},
+     {t:"Dredge its wake  (Artifact+ loot, +38%)", fn:()=>{ forceFind(["artifact","singular","singular"]); S.instab=Math.min(100,S.instab+38); if(!S.flags)S.flags={}; S.flags.wyrm=1; }},
+   ]},
+];
+function eligibleEvents(){ return EVENTS.filter(e=>S.depth>=e.min && (!e.cond||e.cond())); }
+function maybeEvent(){
+  if(pendingEvent) return false;
+  const pool=eligibleEvents(); if(!pool.length) return false;
+  // weight: rare events much less likely
+  const weighted=[]; pool.forEach(e=>{ const w=e.rare?0.18:1; weighted.push({e,w}); });
+  const base=0.14;
+  if(Math.random()>=base) return false;
+  let tot=weighted.reduce((a,b)=>a+b.w,0), r=Math.random()*tot;
+  for(const x of weighted){ r-=x.w; if(r<=0){ openEvent(x.e); return true; } }
+  return false;
+}
+function forceFind(tiers){
+  const elig=ITEMDEF.map((it,idx)=>({it,idx})).filter(o=>tiers.includes(o.it.tier)&&o.it.minD<=S.depth);
+  const pool=elig.length?elig:ITEMDEF.map((it,idx)=>({it,idx})).filter(o=>o.it.minD<=S.depth);
+  const o=pool[Math.floor(Math.random()*pool.length)];
+  awardItem(o, true);
+}
+
+/* ---- scrap upgrades ---- */
+const UPS=[
+  {id:"hull", ic:"🛡️", nm:"Hull Plating", base:60, mul:1.55, max:40,
+   ds:l=>`Instability per descent −${(l*8).toFixed(0)}% (compounding)`},
+  {id:"stab", ic:"⚖️", nm:"Stabilizers", base:120, mul:1.62, max:40,
+   ds:l=>`Safe zone +${(l*3)} • rupture softened`},
+  {id:"mag",  ic:"🧲", nm:"Salvage Magnet", base:90, mul:1.5, max:60,
+   ds:l=>`Luck ×${(1+l*0.12).toFixed(2)} — rarer finds`},
+  {id:"ref",  ic:"♻️", nm:"Cargo Refinery", base:75, mul:1.48, max:80,
+   ds:l=>`Extract value ×${(1+l*0.10).toFixed(2)}`},
+  {id:"beam", ic:"🪝", nm:"Tractor Beam", base:140, mul:1.58, max:30,
+   ds:l=>`${Math.min(90,l*7)}% chance to grab a 2nd item per descent`},
+  {id:"valve",ic:"🌡️", nm:"Pressure Valve", base:110, mul:1.5, max:30,
+   ds:l=>`Bleeds −${(l*0.6).toFixed(1)} flat instability each descent`},
+  {id:"scan", ic:"📟", nm:"Deep Scanner", base:200, mul:1.7, max:1,
+   ds:l=>l?`Shows rupture % live`:`Reveals live rupture odds`},
+  {id:"auto", ic:"🤖", nm:"Auto-Diver", base:1500, mul:2.4, max:8,
+   ds:l=>l?`Auto-dive on • tick ${(2.6-l*0.25).toFixed(2)}s`:`Unlocks hands-free auto-dive`},
+];
+
+/* ---- core (permanent, survive Fold) ---- */
+const COREUPS=[
+  {id:"chull", ic:"🪨", nm:"Reinforced Frame", base:2, mul:2.0, max:25,
+   ds:l=>`Permanent instability −${(l*4)}%`},
+  {id:"cmag",  ic:"💫", nm:"Quantum Magnet", base:3, mul:2.1, max:25,
+   ds:l=>`Permanent luck ×${(1+l*0.15).toFixed(2)}`},
+  {id:"cref",  ic:"⚙️", nm:"Core Refinery", base:3, mul:2.1, max:25,
+   ds:l=>`Permanent value ×${(1+l*0.18).toFixed(2)}`},
+  {id:"cdepth",ic:"🪜", nm:"Certified Depth", base:5, mul:2.6, max:12,
+   ds:l=>`Every dive starts at depth ${l}`},
+  {id:"pcore", ic:"🧊", nm:"Pressure Core", base:4, mul:2.3, max:20,
+   ds:l=>`Permanent −${(l*0.5).toFixed(1)} flat instability / descent`},
+];
+
+/* ---- state ---- */
+let S=null;
+function fresh(){
+  const up={}; UPS.forEach(u=>up[u.id]=0);
+  const cup={}; COREUPS.forEach(u=>cup[u.id]=0);
+  return {
+    scrap:0, core:0, folds:0,
+    up, cup,
+    depth:0, instab:0, haul:0, haulCore:0, diving:false,
+    found:{}, // item idx -> first depth
+    ach:{}, flags:{},
+    auto:{on:false, instab:55, count:20},
+    rec:{deepest:0, bigHaul:0, ruptures:0, lifeScrap:0, foldScrap:0, dives:0},
+    foldMult:1, // +5% value & +2% luck per fold core spent... tracked via folds count
+    seenIntro:false,
+  };
+}
+
+/* ---- persistence ---- */
+let mem=null, lsOK=true;
+function save(){
+  try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }
+  catch(e){ lsOK=false; mem=JSON.stringify(S); }
+}
+function coerce(p){
+  const f=fresh();
+  if(typeof p!=="object"||!p) return f;
+  Object.keys(f).forEach(k=>{ if(p[k]===undefined||typeof p[k]!==typeof f[k]) p[k]=f[k]; });
+  if(typeof p.up!=="object") p.up={};
+  if(typeof p.cup!=="object") p.cup={};
+  if(typeof p.found!=="object") p.found={};
+  if(typeof p.auto!=="object") p.auto={...f.auto};
+  if(typeof p.rec!=="object") p.rec={...f.rec};
+  UPS.forEach(u=>{ if(typeof p.up[u.id]!=="number")p.up[u.id]=0; });
+  COREUPS.forEach(u=>{ if(typeof p.cup[u.id]!=="number")p.cup[u.id]=0; });
+  ["deepest","bigHaul","ruptures","lifeScrap","foldScrap","dives"].forEach(k=>{if(typeof p.rec[k]!=="number")p.rec[k]=0;});
+  ["instab","count"].forEach(k=>{if(typeof p.auto[k]!=="number")p.auto[k]=f.auto[k];});
+  return p;
+}
+function load(){
+  let raw=null;
+  try{ raw=localStorage.getItem(SAVE_KEY); }catch(e){ lsOK=false; raw=mem; }
+  if(!raw) return fresh();
+  try{ return coerce(JSON.parse(raw)); }catch(e){ return fresh(); }
+}
+
+/* ---- signed save codes (tamper-resistant export/import) ---- */
+const SIG_SALT="rd9f_"+"k7Qx2v"+"_riftsig_v1";
+async function _sha(s){
+  const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));
+  return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
+}
+function _b64e(s){ return btoa(unescape(encodeURIComponent(s))); }
+function _b64d(s){ return decodeURIComponent(escape(atob(s))); }
+async function makeCode(){
+  const json=JSON.stringify(S);
+  const sig=(await _sha(json+SIG_SALT)).slice(0,16);
+  return "RD1-"+_b64e(json)+"-"+sig;
+}
+async function applyCode(code){
+  code=(code||"").trim();
+  if(!code.startsWith("RD1-")) throw new Error("That's not a RIFT DREDGE code.");
+  const rest=code.slice(4), i=rest.lastIndexOf("-");
+  if(i<0) throw new Error("Malformed code.");
+  const payload=rest.slice(0,i), sig=rest.slice(i+1);
+  let json; try{ json=_b64d(payload); }catch(e){ throw new Error("Corrupted code."); }
+  const expect=(await _sha(json+SIG_SALT)).slice(0,16);
+  if(expect!==sig) throw new Error("Code rejected — it was edited or corrupted.");
+  let p; try{ p=JSON.parse(json); }catch(e){ throw new Error("Corrupted code."); }
+  S=coerce(p); save(); renderCodex(); render(); rescheduleAuto();
+}
+
+/* ---- derived ---- */
+function luckMult(){
+  return (1+S.up.mag*0.12) * (1+S.cup.cmag*0.15) * (1+S.folds*0.02) * codexBonus("luck") * achMult("luck");
+}
+function valMult(){
+  return (1+S.up.ref*0.10) * (1+S.cup.cref*0.18) * (1+S.folds*0.05) * codexBonus("val") * achMult("val");
+}
+function hullMult(){ // multiplier on instability gain (lower=better)
+  return Math.pow(0.92,S.up.hull) * (1 - Math.min(0.8,S.cup.chull*0.04));
+}
+function startDepth(){ return S.cup.cdepth; }
+
+function codexBonus(kind){
+  // each fully-discovered tier grants small bonus
+  let v=1;
+  TIER_ORDER.forEach((t,i)=>{
+    const items=ITEMDEF.map((it,idx)=>({it,idx})).filter(o=>o.it.tier===t);
+    const all=items.every(o=>S.found[o.idx]!==undefined);
+    if(all){
+      if(kind==="luck") v*=1+0.01*(i+1);
+      if(kind==="val")  v*=1+0.015*(i+1);
+    }
+  });
+  return v;
+}
+
+/* ---- rupture math ---- */
+function safeZone(){ return 18 + S.up.stab*3; }
+function ruptureChance(){
+  const floor=safeZone();
+  if(S.instab<=floor) return 0;
+  const over=(S.instab-floor)/100;
+  let c=Math.pow(Math.max(0,over),1.5);
+  c/=(1+S.up.stab*0.10);
+  return Math.min(0.93,c);
+}
+
+/* ---- weighted item pick ---- */
+function pickItem(toDepth){
+  // eligible items: minD <= toDepth
+  const elig=ITEMDEF.map((it,idx)=>({it,idx})).filter(o=>o.it.minD<=toDepth);
+  const luck=luckMult();
+  let total=0; const rolls=[];
+  elig.forEach(o=>{
+    const ti=TIER_ORDER.indexOf(o.it.tier);
+    let w=TIERS[o.it.tier].w;
+    // luck + depth boost rarer tiers (ti higher)
+    const boost=Math.pow(luck,ti*0.9) * (1+ (toDepth*0.012)*ti);
+    w*=boost;
+    rolls.push({o,w}); total+=w;
+  });
+  let r=Math.random()*total;
+  for(const x of rolls){ r-=x.w; if(r<=0) return x.o; }
+  return rolls[0].o;
+}
+
+/* ---- core actions ---- */
+function beginDive(){
+  S.diving=true; S.depth=startDepth(); S.instab=0; S.haul=0; S.haulCore=0;
+  document.getElementById("feed").innerHTML="";
+  S.rec.dives++;
+}
+function awardItem(o, fromEvent){
+  const t=TIERS[o.it.tier];
+  const zi=zoneFor(S.depth).i;
+  let v=Math.round(t.val*(1+S.depth*0.16)*(1+zi*0.05)*(0.85+Math.random()*0.5)*valMult()*runEcho);
+  if(runEcho>1 && !fromEvent) runEcho=1; // echo consumed by first natural find
+  S.haul+=v;
+  if(o.it.core) S.haulCore+=o.it.core;
+  if(S.found[o.idx]===undefined){ S.found[o.idx]=S.depth; toast(`NEW: ${o.it.em} ${o.it.nm} discovered!`,"good"); renderCodex(); }
+  pushFeed(o.it,v,t);
+}
+function descend(){
+  if(pendingEvent) return;
+  if(!S.diving) beginDive();
+  const toDepth=S.depth+1;
+  // gain instability (flat vents from Valve + Pressure Core reduce it)
+  let gain=(3.4+toDepth*0.42)*(0.7+Math.random()*0.7)*hullMult();
+  gain-=(S.up.valve*0.6 + S.cup.pcore*0.5);
+  S.instab=Math.min(100,Math.max(0,S.instab+Math.max(0.3,gain)));
+  // rupture check
+  if(Math.random()<ruptureChance()){ rupture(); return; }
+  S.depth=toDepth;
+  if(S.depth>S.rec.deepest) S.rec.deepest=S.depth;
+  // primary find
+  awardItem(pickItem(toDepth));
+  // Tractor Beam: chance at a bonus find
+  if(S.up.beam>0 && Math.random()<Math.min(0.9,S.up.beam*0.07)) awardItem(pickItem(toDepth), true);
+  checkAch();
+  save(); render();
+  maybeEvent();
+}
+function extract(){
+  if(pendingEvent) return;
+  if(!S.diving||S.haul<=0){ if(S.diving){S.diving=false;render();} return; }
+  S.scrap+=S.haul; S.core+=S.haulCore; S.rec.lifeScrap+=S.haul; S.rec.foldScrap+=S.haul;
+  if(S.haul>S.rec.bigHaul) S.rec.bigHaul=S.haul;
+  toast(`Extracted +${fmt(S.haul)} scrap${S.haulCore?` +${S.haulCore} cores`:""}`,"good");
+  S.diving=false; S.depth=startDepth(); S.instab=0; S.haul=0; S.haulCore=0; runEcho=1;
+  document.getElementById("feed").innerHTML="";
+  checkAch(); save(); render();
+}
+function rupture(){
+  S.rec.ruptures++;
+  const lost=S.haul;
+  flashRed();
+  toast(`✖ RUPTURE at depth ${S.depth+1} — lost ${fmt(lost)} scrap${S.haulCore?` & ${S.haulCore} cores`:""}`,"bad");
+  S.diving=false; S.depth=startDepth(); S.instab=0; S.haul=0; S.haulCore=0; runEcho=1;
+  document.getElementById("feed").innerHTML="";
+  checkAch(); save(); render();
+}
+
+/* ---- fold (prestige) ---- */
+function foldGain(){ return Math.floor(Math.sqrt(S.rec.foldScrap/5000)); }
+function canFold(){ return S.rec.deepest>=13 && foldGain()>=1; }
+function doFold(){
+  if(!canFold()) return;
+  const g=foldGain();
+  if(!confirm(`FOLD THE RIFT?\n\nGain ${g} Cores and +1 permanent Fold (+5% value, +2% luck each).\n\nResets: Scrap, all Scrap upgrades, current dive.\nKeeps: Cores, Core Lab, Codex, Records.`)) return;
+  S.core+=g; S.folds++;
+  S.scrap=0; UPS.forEach(u=>S.up[u.id]=0);
+  S.rec.foldScrap=0;
+  S.diving=false; S.depth=startDepth(); S.instab=0; S.haul=0; S.haulCore=0;
+  toast(`The rift folds. +${g} cores, +1 fold.`,"good");
+  checkAch(); save(); render();
+}
+
+/* ---- buying ---- */
+function cost(u,lv){ return Math.ceil(u.base*Math.pow(u.mul,lv)); }
+function buyUp(id){
+  const u=UPS.find(x=>x.id===id); const lv=S.up[id];
+  if(lv>=u.max) return;
+  const c=cost(u,lv); if(S.scrap<c) return;
+  S.scrap-=c; S.up[id]++; save(); render();
+}
+function buyCore(id){
+  const u=COREUPS.find(x=>x.id===id); const lv=S.cup[id];
+  if(lv>=u.max) return;
+  const c=cost(u,lv); if(S.core<c) return;
+  S.core-=c; S.cup[id]++;
+  if(S.diving) S.depth=Math.max(S.depth,startDepth());
+  save(); render();
+}
+
+/* ---- auto-dive ---- */
+let autoTimer=null;
+function autoTick(){
+  if(!S.auto.on || S.up.auto<1){ return; }
+  if(pendingEvent) return; // wait for player to resolve the event
+  if(!S.diving){ beginDive(); render(); return; }
+  // stop conditions checked BEFORE descending further
+  if(S.instab>=S.auto.instab || (S.depth-startDepth())>=S.auto.count){
+    extract(); return;
+  }
+  descend();
+}
+function rescheduleAuto(){
+  if(autoTimer) clearInterval(autoTimer);
+  const tick=Math.max(0.5,(2.6-S.up.auto*0.25))*1000;
+  autoTimer=setInterval(autoTick,tick);
+}
+
+/* ============ RENDER ============ */
+function fmt(n){
+  n=Math.floor(n);
+  if(n<1e4) return n.toLocaleString();
+  if(n<1e6) return (n/1e3).toFixed(2)+"K";
+  if(n<1e9) return (n/1e6).toFixed(2)+"M";
+  if(n<1e12) return (n/1e9).toFixed(2)+"B";
+  return (n/1e12).toFixed(2)+"T";
+}
+function render(){
+  // wallet
+  document.getElementById("w-scrap").textContent=fmt(S.scrap);
+  document.getElementById("w-core").textContent=fmt(S.core);
+  document.getElementById("w-fold").textContent=S.folds;
+  // console
+  const dep=S.diving?S.depth:startDepth();
+  const zn=zoneFor(dep);
+  const dn=document.getElementById("depth"); dn.textContent=dep; dn.style.color=zn.z.col;
+  const zl=document.getElementById("zonelab"); zl.textContent=zn.z.nm; zl.style.color=zn.z.col;
+  document.getElementById("haul").textContent=fmt(S.haul);
+  document.getElementById("haulcore").textContent=S.haulCore?` +${S.haulCore} cores`:"";
+  document.getElementById("s-luck").textContent=luckMult().toFixed(2)+"×";
+  document.getElementById("s-val").textContent=valMult().toFixed(2)+"×";
+  const rc=ruptureChance();
+  const showRisk=S.up.scan>0;
+  document.getElementById("s-risk").textContent=showRisk?(rc*100).toFixed(0)+"%":"???";
+  // gauge
+  const g=document.getElementById("gfill"), gp=document.getElementById("gpct"), ga=document.getElementById("gauge");
+  g.style.height=S.instab+"%";
+  g.className="gfill"+(S.instab>safeZone()+30?" crit":S.instab>safeZone()?" warn":"");
+  gp.textContent=Math.round(S.instab)+"%";
+  gp.className="gpct"+(S.instab>safeZone()+30?" crit":S.instab>safeZone()?" warn":"");
+  ga.className="gauge"+(rc>0.45?" danger2":rc>0.2?" danger":"");
+  // buttons
+  document.getElementById("btn-extract").disabled=(!S.diving||S.haul<=0);
+  // auto state
+  const aOn=S.auto.on&&S.up.auto>0;
+  document.getElementById("auto-state").textContent=aOn?"on":"off";
+  document.getElementById("auto-detail").textContent=aOn?`extracts at ${S.auto.instab}% or +${S.auto.count} layers`:"";
+
+  renderUps(); renderCore(); renderRec(); renderAch();
+}
+function renderAch(){
+  const el=document.getElementById("pane-ach"); if(!el) return;
+  const got=ACHS.filter(a=>S.ach&&S.ach[a.id]).length;
+  el.innerHTML=`<div class="tiny" style="margin-bottom:8px">Permanent bonuses, earned forever. (${got}/${ACHS.length})</div>`+
+    `<div class="achgrid">`+ACHS.map(a=>{
+      const on=S.ach&&S.ach[a.id];
+      const bonus=(a.bv?`+${Math.round(a.bv*100)}% val`:"")+(a.bv&&a.bl?" · ":"")+(a.bl?`+${Math.round(a.bl*100)}% luck`:"");
+      return `<div class="ach ${on?"got":""}"><div class="ae">${on?"★":"☆"}</div>
+        <div><div class="an">${a.nm}</div><div class="ad">${a.ds}</div></div>
+        <div class="ab">${bonus||"—"}</div></div>`;
+    }).join("")+`</div>`;
+}
+/* ---- event modal ---- */
+function openEvent(ev){
+  pendingEvent=ev;
+  document.getElementById("evt-em").textContent=ev.em;
+  document.getElementById("evt-nm").textContent=ev.nm;
+  document.getElementById("evt-desc").textContent=ev.desc;
+  const cw=document.getElementById("evt-choices"); cw.innerHTML="";
+  ev.ch.forEach(c=>{
+    const b=document.createElement("button"); b.className="btn"; b.textContent=c.t;
+    b.onclick=()=>{ const raw=c.raw; c.fn(); if(!raw){ pendingEvent=null; closeEvent(); checkAch(); save(); render(); } };
+    cw.appendChild(b);
+  });
+  document.getElementById("evt-overlay").classList.add("on");
+}
+function closeEvent(){ document.getElementById("evt-overlay").classList.remove("on"); }
+function pushFeed(it,v,t){
+  const f=document.getElementById("feed");
+  const d=document.createElement("div"); d.className="fitem";
+  d.innerHTML=`<span class="em">${it.em}</span><span class="nm">${it.nm}</span>
+    <span class="tg" style="color:${t.col}">${t.nm}</span>
+    <span class="val">+${fmt(v)}</span>`;
+  f.prepend(d);
+  while(f.children.length>30) f.removeChild(f.lastChild);
+}
+function renderUps(){
+  const el=document.getElementById("pane-up"); el.innerHTML="";
+  UPS.forEach(u=>{
+    const lv=S.up[u.id], maxed=lv>=u.max, c=cost(u,lv);
+    const row=document.createElement("div"); row.className="up";
+    row.innerHTML=`<div class="ic">${u.ic}</div>
+      <div class="body"><div class="nm">${u.nm} <span class="lv">Lv ${lv}${u.max<999?"/"+u.max:""}</span></div>
+        <div class="ds">${u.ds(lv)}</div></div>
+      <button class="buy" ${maxed||S.scrap<c?"disabled":""}>${maxed?"MAX":fmt(c)+" 💛"}</button>`;
+    if(!maxed) row.querySelector(".buy").onclick=()=>buyUp(u.id);
+    el.appendChild(row);
+  });
+}
+function renderCore(){
+  const fb=document.getElementById("foldbox");
+  const g=foldGain();
+  fb.innerHTML=`<div class="ft">⌬ FOLD THE RIFT</div>
+    <div class="tiny">Reach depth 13 once, then fold to bank permanent power. Cores on fold: <b style="color:var(--cyan)">${g}</b> (from ${fmt(S.rec.foldScrap)} scrap this cycle).</div>
+    <div class="tiny">Each fold: <b style="color:var(--gold)">+5% value</b>, <b style="color:var(--teal)">+2% luck</b>, forever. Current folds: ${S.folds}.</div>`;
+  const btn=document.createElement("button"); btn.className="btn sm"; btn.style.marginTop="8px";
+  btn.style.color="var(--purple)"; btn.textContent=canFold()?`FOLD (+${g} cores)`:(S.rec.deepest<13?`Reach depth 13 to unlock`:`Need more scrap`);
+  btn.disabled=!canFold(); btn.onclick=doFold; fb.appendChild(btn);
+
+  const el=document.getElementById("core-list"); el.innerHTML="";
+  COREUPS.forEach(u=>{
+    const lv=S.cup[u.id], maxed=lv>=u.max, c=cost(u,lv);
+    const row=document.createElement("div"); row.className="up";
+    row.innerHTML=`<div class="ic">${u.ic}</div>
+      <div class="body"><div class="nm">${u.nm} <span class="lv">Lv ${lv}/${u.max}</span></div>
+        <div class="ds">${u.ds(lv)}</div></div>
+      <button class="buy core" ${maxed||S.core<c?"disabled":""}>${maxed?"MAX":fmt(c)+" ◆"}</button>`;
+    if(!maxed) row.querySelector(".buy").onclick=()=>buyCore(u.id);
+    el.appendChild(row);
+  });
+}
+function renderCodex(){
+  const el=document.getElementById("codexgrid"); el.innerHTML="";
+  let found=0;
+  ITEMDEF.forEach((it,idx)=>{
+    const got=S.found[idx]!==undefined; if(got)found++;
+    const t=TIERS[it.tier];
+    const cx=document.createElement("div"); cx.className="cx"+(got?" found":"");
+    cx.innerHTML=`<div class="e">${it.em}</div><div class="d">${got?"D"+S.found[idx]:"???"}</div>
+      <div class="tip"><div class="tn" style="color:${t.col}">${got?it.nm:"Undiscovered"}</div>
+      <div class="tt" style="color:${t.col}">${t.nm}</div>
+      <div class="tiny">${got?(it.core?`+${it.core} cores`:"")+` · found D${S.found[idx]}`:`appears from depth ${it.minD}`}</div></div>`;
+    el.appendChild(cx);
+  });
+  document.getElementById("codex-count").textContent=`(${found}/${ITEMDEF.length} found)`;
+}
+function renderRec(){
+  const el=document.getElementById("pane-rec");
+  const r=S.rec;
+  const rows=[
+    ["Deepest descent", r.deepest+" layers"],
+    ["Biggest single haul", fmt(r.bigHaul)+" scrap"],
+    ["Total dives launched", fmt(r.dives)],
+    ["Drones ruptured", fmt(r.ruptures)],
+    ["Lifetime scrap banked", fmt(r.lifeScrap)],
+    ["Times folded", S.folds],
+    ["Survival rate", r.dives?Math.round((1-r.ruptures/r.dives)*100)+"%":"—"],
+  ];
+  el.innerHTML=rows.map(x=>`<div class="rec"><span class="l">${x[0]}</span><span class="v">${x[1]}</span></div>`).join("");
+}
+
+/* ---- fx ---- */
+function toast(msg,kind){
+  const t=document.getElementById("toast");
+  const d=document.createElement("div"); d.className="tm"+(kind?" "+kind:"");
+  d.textContent=msg; t.appendChild(d);
+  setTimeout(()=>{d.style.opacity="0";d.style.transition="opacity .4s";setTimeout(()=>d.remove(),400);},2600);
+  while(t.children.length>4) t.removeChild(t.firstChild);
+}
+function flashRed(){ const f=document.getElementById("flash"); f.classList.add("go"); setTimeout(()=>f.classList.remove("go"),160); }
+
+/* ============ WIRING ============ */
+function wire(){
+  document.getElementById("btn-descend").onclick=()=>descend();
+  document.getElementById("btn-extract").onclick=()=>extract();
+  // tabs
+  document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
+    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("on"));
+    document.querySelectorAll(".pane").forEach(x=>x.classList.remove("on"));
+    t.classList.add("on"); document.getElementById("pane-"+t.dataset.t).classList.add("on");
+  });
+  // settings
+  const tAuto=document.getElementById("t-auto");
+  const rIn=document.getElementById("r-instab"), rCt=document.getElementById("r-count");
+  function syncSet(){
+    tAuto.classList.toggle("on",S.auto.on);
+    rIn.value=S.auto.instab; document.getElementById("v-instab").textContent=S.auto.instab+"%";
+    rCt.value=S.auto.count; document.getElementById("v-count").textContent=S.auto.count;
+  }
+  tAuto.onclick=()=>{ if(S.up.auto<1){toast("Buy the Auto-Diver upgrade first.","bad");return;} S.auto.on=!S.auto.on; save(); syncSet(); render(); };
+  rIn.oninput=()=>{ S.auto.instab=+rIn.value; document.getElementById("v-instab").textContent=rIn.value+"%"; save(); };
+  rCt.oninput=()=>{ S.auto.count=+rCt.value; document.getElementById("v-count").textContent=rCt.value; save(); };
+  syncSet();
+  // keyboard
+  document.addEventListener("keydown",e=>{
+    if(e.target.tagName==="INPUT")return;
+    if(e.code==="Space"||e.key.toLowerCase()==="d"){e.preventDefault();descend();}
+    if(e.key.toLowerCase()==="e"){extract();}
+  });
+  // data
+  document.getElementById("btn-save").onclick=()=>{save();toast("Saved.","good");};
+  document.getElementById("btn-reset").onclick=()=>{ if(confirm("Hard reset EVERYTHING? This cannot be undone.")){ S=fresh(); save(); renderCodex(); render(); rescheduleAuto(); toast("Wiped clean.","bad"); } };
+  document.getElementById("btn-export").onclick=async()=>{
+    const code=await makeCode();
+    try{ await navigator.clipboard.writeText(code); toast("Save code copied to clipboard.","good"); }
+    catch(e){ prompt("Copy your save code:",code); }
+  };
+  document.getElementById("btn-import").onclick=async()=>{
+    const code=prompt("Paste your RIFT DREDGE save code:");
+    if(code===null) return;
+    try{ await applyCode(code); toast("Save imported.","good"); }
+    catch(e){ toast(e.message||"Import failed.","bad"); }
+  };
+  document.getElementById("save-note").textContent=lsOK?"Progress auto-saves to this browser.":"⚠ localStorage blocked — progress held in memory only this session.";
+}
+
+/* ---- boot ---- */
+S=load();
+wire();
+renderCodex(); render(); rescheduleAuto();
+if(!S.seenIntro){ S.seenIntro=true; toast("Descend for richer salvage — but extract before the rift ruptures.","good"); save(); }
+setInterval(save,15000);
+</script>
+</body>
+</html>
