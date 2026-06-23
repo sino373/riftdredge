@@ -126,7 +126,19 @@ body{
 .foldbox .ft{color:var(--purple);font-weight:700;letter-spacing:.1em;font-size:.8rem}
 .tiny{font-size:.66rem;color:var(--text3);margin-top:4px}
 a.link{color:var(--cyan);cursor:pointer;text-decoration:underline}
+.haul b{color:var(--gold)}
+.haul .mult{color:var(--teal);font-weight:700}
+.haul .arrow{color:var(--text3);font-size:.72rem}
 .zonelab{font-size:.66rem;letter-spacing:.24em;color:var(--teal);margin-top:2px;font-weight:700;transition:color .3s}
+.zonenext{font-size:.56rem;letter-spacing:.16em;color:var(--text3);margin-top:1px}
+.bestfind{font-size:.72rem;color:var(--text2);margin-top:6px;min-height:1.1em}
+.bestfind b{color:var(--gold)}
+@keyframes shake{0%,100%{transform:translate(0,0)}20%{transform:translate(-4px,2px)}40%{transform:translate(4px,-2px)}60%{transform:translate(-3px,-2px)}80%{transform:translate(3px,2px)}}
+.shake{animation:shake .32s}
+.shake.big{animation:shake .5s}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.14)}100%{transform:scale(1)}}
+.depthnum.pop{animation:pop .26s}
+@media(prefers-reduced-motion:reduce){.shake,.depthnum.pop,.gauge.danger,.gauge.danger2{animation:none}}
 .achgrid{display:flex;flex-direction:column;gap:6px}
 .ach{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--void2);opacity:.5}
 .ach.got{opacity:1;border-color:var(--gold)}
@@ -139,9 +151,14 @@ a.link{color:var(--cyan);cursor:pointer;text-decoration:underline}
 .evt-box{background:linear-gradient(180deg,var(--panel2),var(--void2));border:1px solid var(--purple);border-radius:14px;padding:22px;max-width:440px;width:100%;text-align:center;box-shadow:0 0 40px rgba(176,107,255,.25)}
 .evt-em{font-size:2.6rem;line-height:1}
 .evt-nm{font-size:1.15rem;font-weight:800;letter-spacing:.08em;color:var(--purple);margin:6px 0}
-.evt-desc{font-size:.82rem;color:var(--text2);margin-bottom:16px}
+.evt-desc{font-size:.82rem;color:var(--text2);margin-bottom:12px}
+.evt-state{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;font-size:.64rem;letter-spacing:.08em;color:var(--text3);border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:14px}
+.evt-state b{color:var(--text);font-weight:700}
+.evt-state b.r{color:var(--red)}
 .evt-choices{display:flex;flex-direction:column;gap:8px}
-.evt-choices .btn{flex:none;width:100%;text-transform:none;letter-spacing:.02em;font-size:.78rem}
+.evt-choices .btn{flex:none;width:100%;text-transform:none;letter-spacing:.02em;font-size:.78rem;display:flex;flex-direction:column;gap:3px;text-align:left;padding:11px 13px}
+.evt-choices .ct{font-weight:700}
+.evt-choices .cn{font-size:.66rem;color:var(--text2);font-weight:400;line-height:1.35}
 </style>
 </head>
 <body>
@@ -161,7 +178,7 @@ a.link{color:var(--cyan);cursor:pointer;text-decoration:underline}
 
   <div class="grid">
     <!-- LEFT: DIVE CONSOLE -->
-    <div class="card">
+    <div class="card" id="console-card">
       <div class="sb-title">// Dive Console</div>
       <div class="console">
         <div class="gaugewrap">
@@ -175,7 +192,9 @@ a.link{color:var(--cyan);cursor:pointer;text-decoration:underline}
             <div class="depthlab">DEPTH<br>LAYERS</div>
           </div>
           <div class="zonelab" id="zonelab">THE SHALLOWS</div>
-          <div class="haul">Run haul: <b id="haul">0</b> scrap <span id="haulcore" style="color:var(--cyan)"></span></div>
+          <div class="zonenext" id="zonenext"></div>
+          <div class="bestfind" id="bestfind"></div>
+          <div class="haul">Pot <b id="haul">0</b> <span class="mult" id="runmult">×1.00</span> <span class="arrow">→ bank</span> <b id="bankval">0</b><span id="haulcore" style="color:var(--cyan)"></span></div>
           <div class="statline">
             <span>luck <b id="s-luck">1.0×</b></span>
             <span>value <b id="s-val">1.0×</b></span>
@@ -256,6 +275,7 @@ a.link{color:var(--cyan);cursor:pointer;text-decoration:underline}
     <div class="evt-em" id="evt-em">♨️</div>
     <div class="evt-nm" id="evt-nm">Event</div>
     <div class="evt-desc" id="evt-desc"></div>
+    <div class="evt-state" id="evt-state"></div>
     <div class="evt-choices" id="evt-choices"></div>
   </div>
 </div>
@@ -273,23 +293,37 @@ const TIERS={
   anomaly  :{nm:"ANOMALY",    col:"#b06bff", w:18,   val:45},
   artifact :{nm:"ARTIFACT",   col:"#ffcc44", w:3.2,  val:185},
   singular :{nm:"SINGULARITY",col:"#39c6ff", w:0.34, val:920},
+  paradox  :{nm:"PARADOX",    col:"#ff5cf0", w:0.035,val:4200},
 };
-const TIER_ORDER=["debris","salvage","relic","anomaly","artifact","singular"];
+const TIER_ORDER=["debris","salvage","relic","anomaly","artifact","singular","paradox"];
 
 /* ---- items (the Codex) — minD gates depth ---- */
 const ITEMS=[
   ["Rusted Plating","🔩","debris",1],["Coolant Sludge","🛢️","debris",1],
   ["Cracked Panel","🪟","debris",1],["Frayed Cable","🧵","debris",2],
+  ["Bent Strut","🔧","debris",1],["Dead Battery","🪫","debris",2],
+  ["Scorched Tile","⬛","debris",2],["Snapped Antenna","📍","debris",3],
   ["Power Cell","🔋","salvage",2],["Hull Fragment","🛡️","salvage",2],
   ["Nav Chip","💾","salvage",3],["Servo Arm","🦾","salvage",4],
+  ["Oxygen Tank","🧴","salvage",3],["Signal Flare","🧨","salvage",4],
+  ["Gyro Disk","💿","salvage",4],["Coil Spring","➰","salvage",5],
   ["Black Box","📦","relic",4],["Cryo Pod","❄️","relic",5],
   ["Reactor Rod","☢️","relic",6],["Drift Beacon","📡","relic",6],
+  ["Sealed Logbook","📕","relic",5],["Comm Array","📶","relic",6],
+  ["Fusion Cell","🔆","relic",7],["Ghost Drone","🛸","relic",7],
   ["Phase Crystal","🔮","anomaly",7],["Echo Shard","🌀","anomaly",8],
   ["Drift Bloom","🌸","anomaly",8],["Null Core","🕳️","anomaly",9,1],
+  ["Gravity Knot","🪢","anomaly",9],["Mirror Shard","🪞","anomaly",10],
+  ["Whisper Conch","🐚","anomaly",10],["Quantum Dice","🎲","anomaly",11,1],
   ["Star Forge","🌟","artifact",10],["Helix Drive","🧬","artifact",12],
   ["Void Lens","🛰️","artifact",11,2],["Aeon Plate","🪐","artifact",12,1],
+  ["Sunforge Core","🔥","artifact",13],["Chrono Anchor","⏳","artifact",14,2],
+  ["Eclipse Disc","🌑","artifact",14],["Astral Map","🗺️","artifact",15,1],
   ["Heart of the Rift","💎","singular",13,5],["Last Light","🕯️","singular",16,6],
   ["Folded Sun","☀️","singular",15,8],["Origin Seed","🌱","singular",18,10],
+  ["Event Horizon","🌌","singular",17,7],["Quasar Pearl","⚪","singular",19,9],
+  ["Paradox Shard","💠","paradox",22,12],["Möbius Coil","♾️","paradox",25,15],
+  ["Genesis Mote","✨","paradox",28,18],["Omega Point","🌠","paradox",32,25],
 ];
 // item = {nm,em,tier,minD,core}
 const ITEMDEF=ITEMS.map(a=>({nm:a[0],em:a[1],tier:a[2],minD:a[3],core:a[4]||0}));
@@ -315,7 +349,8 @@ const ACHS=[
   {id:"fold1", nm:"Folded",         ds:"Fold the rift once",       chk:s=>s.folds>=1,          bv:.05, bl:0},
   {id:"fold5", nm:"Recursion",      ds:"Fold 5 times",             chk:s=>s.folds>=5,          bv:0,   bl:.10},
   {id:"cat",   nm:"Cataloguer",     ds:"Discover 12 items",        chk:s=>Object.keys(s.found).length>=12, bv:0, bl:.05},
-  {id:"comp",  nm:"Completionist",  ds:"Discover all 24 items",    chk:s=>Object.keys(s.found).length>=24, bv:.15,bl:.15},
+  {id:"comp",  nm:"Completionist",  ds:`Discover all ${ITEMDEF.length} items`, chk:s=>Object.keys(s.found).length>=ITEMDEF.length, bv:.15,bl:.15},
+  {id:"para",  nm:"Paradox",        ds:"Salvage a Paradox-tier item", chk:s=>ITEMDEF.some((it,idx)=>it.tier==="paradox"&&s.found[idx]!==undefined), bv:.12, bl:.12},
   {id:"wyrm",  nm:"Wyrm-Touched",   ds:"Dredge the Dredgewyrm's wake", chk:s=>!!(s.flags&&s.flags.wyrm), bv:.10, bl:0},
   {id:"rich",  nm:"Tycoon",         ds:"Bank 1M lifetime scrap",   chk:s=>s.rec.lifeScrap>=1e6,bv:0,   bl:.08},
 ];
@@ -330,36 +365,59 @@ function checkAch(){
 }
 
 /* ---- mid-dive events ---- */
-let pendingEvent=null, runEcho=1;
+let pendingEvent=null, runEcho=1, runBest={v:0,em:"",nm:"",col:""};
+// helper: only reveals exact bust odds if the player owns the Deep Scanner
+function bustHint(v){ return S.up.scan>0 ? ` · ~${Math.round(ruptureChance(v)*100)}% bust` : ""; }
+const clampI=v=>Math.min(100,Math.max(0,v));
 const EVENTS=[
-  {nm:"Pressure Vent", em:"♨️", min:2,
-   desc:"A hairline fissure could bleed off pressure — or blow back in your face.",
+  {nm:"Pressure Surge", em:"♨️", min:3,
+   desc:"The hull groans. One move before it settles — read the gauge.",
    ch:[
-     {t:"Vent safely  (−14% instability)", fn:()=>{ S.instab=Math.max(0,S.instab-14); }},
-     {t:"Force the vent  (−30%, but 28% backfire +18%)", fn:()=>{ if(Math.random()<0.28){ S.instab=Math.min(100,S.instab+18); toast("Backfire! +18% instability","bad"); } else { S.instab=Math.max(0,S.instab-30); toast("Clean vent, −30%","good"); } }},
+     {t:"Vent", note:()=>`instability ${Math.round(S.instab)}% → ${Math.round(clampI(S.instab-22))}%, but multiplier ×${S.runMult.toFixed(2)} → ×${(S.runMult*0.82).toFixed(2)}`,
+      fn:()=>{ S.instab=clampI(S.instab-22); S.runMult*=0.82; }},
+     {t:"Brace", note:()=>`ride it out — no change`, fn:()=>{}},
+     {t:"Overclock", note:()=>`multiplier ×${S.runMult.toFixed(2)} → ×${(S.runMult*1.3).toFixed(2)}, instability → ${Math.round(clampI(S.instab+20))}%${bustHint(clampI(S.instab+20))}`,
+      fn:()=>{ S.runMult*=1.3; S.instab=clampI(S.instab+20); }},
    ]},
-  {nm:"Sealed Cache", em:"📦", min:3,
-   desc:"A pressurised cache hums in the silt. Cracking it rattles the whole drone.",
+  {nm:"Dense Salvage", em:"⛏️", min:4,
+   desc:"A seam of packed salvage. The payoff scales with what you're already carrying — but stripping it shakes the drone.",
    ch:[
-     {t:"Crack it open  (guaranteed Relic+, +12%)", fn:()=>{ forceFind(["relic","anomaly","artifact"]); S.instab=Math.min(100,S.instab+12); }},
-     {t:"Leave it sealed", fn:()=>{}},
+     {t:"Strip the seam", note:()=>`+${fmt(Math.round(S.haul*0.35))} to pot (35%), instability → ${Math.round(clampI(S.instab+16))}%${bustHint(clampI(S.instab+16))}`,
+      fn:()=>{ S.haul+=Math.round(S.haul*0.35); S.instab=clampI(S.instab+16); }},
+     {t:"Leave it", note:()=>`no risk, no gain`, fn:()=>{}},
    ]},
-  {nm:"Echo Bloom", em:"🌀", min:4,
-   desc:"A resonance field flickers. It could amplify your very next find.",
+  {nm:"Anchor Line", em:"⚓", min:3,
+   desc:"Run a line to the surface and lock in part of the haul — but cashing out mid-dive kills your momentum.",
    ch:[
-     {t:"Absorb it  (next find ×3 value, +9%)", fn:()=>{ runEcho=3; S.instab=Math.min(100,S.instab+9); toast("Resonance charged — next find ×3","good"); }},
-     {t:"Drift past", fn:()=>{}},
+     {t:"Secure half", note:()=>`bank ${fmt(Math.round(S.haul*S.runMult*0.5))} now (safe), but multiplier ×${S.runMult.toFixed(2)} → ×${(S.runMult*0.55).toFixed(2)} on what's left`,
+      fn:()=>{ const half=S.haul*0.5, b=Math.round(half*S.runMult); S.scrap+=b; S.rec.lifeScrap+=b; S.rec.foldScrap+=b; if(b>S.rec.bigHaul)S.rec.bigHaul=b; S.haul-=half; S.runMult*=0.55; toast(`Secured +${fmt(b)} scrap · momentum lost`,"good"); }},
+     {t:"Ride it all", note:()=>`keep all ${fmt(Math.round(S.haul*S.runMult))} riding at full ×${S.runMult.toFixed(2)}`, fn:()=>{}},
    ]},
-  {nm:"Derelict Beacon", em:"📡", min:2,
-   desc:"An old rescue beacon, still broadcasting a credit cache to no one.",
+  {nm:"Collapsing Vaults", em:"🗄️", min:5,
+   desc:"Three vaults, each richer and riskier. Commit how deep before they crush — you only get what you call.",
    ch:[
-     {t:"Collect the cache", fn:()=>{ const g=Math.round(35*(1+S.depth)*valMult()); S.haul+=g; toast(`+${fmt(g)} scrap`,"good"); }},
+     {t:"Crack one", note:()=>`+1 find, instability → ${Math.round(clampI(S.instab+8))}%`,
+      fn:()=>{ forceFind(["relic","anomaly"]); S.instab=clampI(S.instab+8); }},
+     {t:"Crack two", note:()=>`+2 finds, instability → ${Math.round(clampI(S.instab+18))}%${bustHint(clampI(S.instab+18))}`,
+      fn:()=>{ forceFind(["relic","anomaly"]); forceFind(["anomaly","artifact"]); S.instab=clampI(S.instab+18); }},
+     {t:"Crack all three", note:()=>`+3 finds incl. Artifact+, instability → ${Math.round(clampI(S.instab+32))}%${bustHint(clampI(S.instab+32))}`,
+      fn:()=>{ forceFind(["anomaly","artifact"]); forceFind(["artifact"]); forceFind(["artifact","singular"]); S.instab=clampI(S.instab+32); }},
+   ]},
+  {nm:"Charged Cell", em:"🔋", min:2,
+   desc:"A live power cell. Cash it, or splice it into the drive — worth it only if you plan to keep diving.",
+   ch:[
+     {t:"Cash it", note:()=>`+${fmt(Math.round(55*(1+S.depth)*valMult()))} to pot now`,
+      fn:()=>{ S.haul+=Math.round(55*(1+S.depth)*valMult()); }},
+     {t:"Splice into drive", note:()=>`multiplier ×${S.runMult.toFixed(2)} → ×${(S.runMult+0.4).toFixed(2)} (pays off across the rest of the dive)`,
+      fn:()=>{ S.runMult+=0.4; }},
    ]},
   {nm:"The Dredgewyrm", em:"🐉", min:14, rare:true,
-   desc:"Something enormous uncoils in the dark. It has already noticed you.",
+   desc:"Something vast uncoils in the dark. It has already noticed you.",
    ch:[
-     {t:"Run for the surface  (extract now)", raw:true, fn:()=>{ pendingEvent=null; closeEvent(); extract(); }},
-     {t:"Dredge its wake  (Artifact+ loot, +38%)", fn:()=>{ forceFind(["artifact","singular","singular"]); S.instab=Math.min(100,S.instab+38); if(!S.flags)S.flags={}; S.flags.wyrm=1; }},
+     {t:"Run for the surface", raw:true, note:()=>`bank ${fmt(Math.round(S.haul*S.runMult))} and end the dive — safe`,
+      fn:()=>{ pendingEvent=null; closeEvent(); extract(); }},
+     {t:"Dredge its wake", note:()=>`Artifact+ loot, instability → ${Math.round(clampI(S.instab+30))}%${bustHint(clampI(S.instab+30))}`,
+      fn:()=>{ forceFind(["artifact","singular","singular"]); S.instab=clampI(S.instab+30); if(!S.flags)S.flags={}; S.flags.wyrm=1; }},
    ]},
 ];
 function eligibleEvents(){ return EVENTS.filter(e=>S.depth>=e.min && (!e.cond||e.cond())); }
@@ -384,9 +442,9 @@ function forceFind(tiers){
 /* ---- scrap upgrades ---- */
 const UPS=[
   {id:"hull", ic:"🛡️", nm:"Hull Plating", base:60, mul:1.55, max:40,
-   ds:l=>`Instability per descent −${(l*8).toFixed(0)}% (compounding)`},
-  {id:"stab", ic:"⚖️", nm:"Stabilizers", base:120, mul:1.62, max:40,
-   ds:l=>`Safe zone +${(l*3)} • rupture softened`},
+   ds:l=>`Instability per descent −${Math.round((1-Math.pow(0.94,l))*100)}% (caps at −60%)`},
+  {id:"stab", ic:"⚖️", nm:"Stabilizers", base:120, mul:1.6, max:25,
+   ds:l=>`Safe zone ${Math.round(12+Math.min(22,l*1.4))}% (caps) • rupture softened (caps)`},
   {id:"mag",  ic:"🧲", nm:"Salvage Magnet", base:90, mul:1.5, max:60,
    ds:l=>`Luck ×${(1+l*0.12).toFixed(2)} — rarer finds`},
   {id:"ref",  ic:"♻️", nm:"Cargo Refinery", base:75, mul:1.48, max:80,
@@ -394,7 +452,7 @@ const UPS=[
   {id:"beam", ic:"🪝", nm:"Tractor Beam", base:140, mul:1.58, max:30,
    ds:l=>`${Math.min(90,l*7)}% chance to grab a 2nd item per descent`},
   {id:"valve",ic:"🌡️", nm:"Pressure Valve", base:110, mul:1.5, max:30,
-   ds:l=>`Bleeds −${(l*0.6).toFixed(1)} flat instability each descent`},
+   ds:l=>`Bleeds −${(l*0.6).toFixed(1)} flat instability/descent (vent cap 55%)`},
   {id:"scan", ic:"📟", nm:"Deep Scanner", base:200, mul:1.7, max:1,
    ds:l=>l?`Shows rupture % live`:`Reveals live rupture odds`},
   {id:"auto", ic:"🤖", nm:"Auto-Diver", base:1500, mul:2.4, max:8,
@@ -404,7 +462,7 @@ const UPS=[
 /* ---- core (permanent, survive Fold) ---- */
 const COREUPS=[
   {id:"chull", ic:"🪨", nm:"Reinforced Frame", base:2, mul:2.0, max:25,
-   ds:l=>`Permanent instability −${(l*4)}%`},
+   ds:l=>`Permanent instability −${Math.min(55,Math.round(l*3.5))}%`},
   {id:"cmag",  ic:"💫", nm:"Quantum Magnet", base:3, mul:2.1, max:25,
    ds:l=>`Permanent luck ×${(1+l*0.15).toFixed(2)}`},
   {id:"cref",  ic:"⚙️", nm:"Core Refinery", base:3, mul:2.1, max:25,
@@ -413,6 +471,8 @@ const COREUPS=[
    ds:l=>`Every dive starts at depth ${l}`},
   {id:"pcore", ic:"🧊", nm:"Pressure Core", base:4, mul:2.3, max:20,
    ds:l=>`Permanent −${(l*0.5).toFixed(1)} flat instability / descent`},
+  {id:"cblackbox", ic:"📼", nm:"Black Box", base:5, mul:2.2, max:9,
+   ds:l=>`Recover ${5+l*5}% of the lost pot as scrap when a drone ruptures`},
 ];
 
 /* ---- state ---- */
@@ -422,12 +482,13 @@ function fresh(){
   const cup={}; COREUPS.forEach(u=>cup[u.id]=0);
   return {
     scrap:0, core:0, folds:0,
+    runMult:1,
     up, cup,
     depth:0, instab:0, haul:0, haulCore:0, diving:false,
     found:{}, // item idx -> first depth
     ach:{}, flags:{},
     auto:{on:false, instab:55, count:20},
-    rec:{deepest:0, bigHaul:0, ruptures:0, lifeScrap:0, foldScrap:0, dives:0},
+    rec:{deepest:0, bigHaul:0, ruptures:0, lifeScrap:0, foldScrap:0, dives:0, salvaged:0},
     foldMult:1, // +5% value & +2% luck per fold core spent... tracked via folds count
     seenIntro:false,
   };
@@ -450,7 +511,7 @@ function coerce(p){
   if(typeof p.rec!=="object") p.rec={...f.rec};
   UPS.forEach(u=>{ if(typeof p.up[u.id]!=="number")p.up[u.id]=0; });
   COREUPS.forEach(u=>{ if(typeof p.cup[u.id]!=="number")p.cup[u.id]=0; });
-  ["deepest","bigHaul","ruptures","lifeScrap","foldScrap","dives"].forEach(k=>{if(typeof p.rec[k]!=="number")p.rec[k]=0;});
+  ["deepest","bigHaul","ruptures","lifeScrap","foldScrap","dives","salvaged"].forEach(k=>{if(typeof p.rec[k]!=="number")p.rec[k]=0;});
   ["instab","count"].forEach(k=>{if(typeof p.auto[k]!=="number")p.auto[k]=f.auto[k];});
   return p;
 }
@@ -494,8 +555,9 @@ function luckMult(){
 function valMult(){
   return (1+S.up.ref*0.10) * (1+S.cup.cref*0.18) * (1+S.folds*0.05) * codexBonus("val") * achMult("val");
 }
-function hullMult(){ // multiplier on instability gain (lower=better)
-  return Math.pow(0.92,S.up.hull) * (1 - Math.min(0.8,S.cup.chull*0.04));
+function hullMult(){ // multiplier on instability gain (lower=better), floored so it can't trivialize
+  const r=Math.pow(0.94,S.up.hull) * (1 - Math.min(0.55,S.cup.chull*0.035));
+  return Math.max(0.4,r);
 }
 function startDepth(){ return S.cup.cdepth; }
 
@@ -514,14 +576,15 @@ function codexBonus(kind){
 }
 
 /* ---- rupture math ---- */
-function safeZone(){ return 18 + S.up.stab*3; }
-function ruptureChance(){
+function safeZone(){ return 10 + Math.min(16,S.up.stab*1.2); } // danger now begins by ~26%
+function ruptureChance(v){
+  v=(v===undefined?S.instab:v);
   const floor=safeZone();
-  if(S.instab<=floor) return 0;
-  const over=(S.instab-floor)/100;
-  let c=Math.pow(Math.max(0,over),1.5);
-  c/=(1+S.up.stab*0.10);
-  return Math.min(0.93,c);
+  if(v<=floor) return 0;
+  const over=(v-floor)/(100-floor);          // 0..1 across the danger band
+  let c=Math.pow(Math.max(0,over),1.18);     // climbs harder & sooner once past the floor
+  c/=(1+Math.min(0.85,S.up.stab*0.022));     // stabilizers soften, capped
+  return Math.min(0.97,c);
 }
 
 /* ---- weighted item pick ---- */
@@ -545,32 +608,41 @@ function pickItem(toDepth){
 
 /* ---- core actions ---- */
 function beginDive(){
-  S.diving=true; S.depth=startDepth(); S.instab=0; S.haul=0; S.haulCore=0;
+  S.diving=true; S.depth=startDepth(); S.instab=0; S.haul=0; S.haulCore=0; S.runMult=1; runBest={v:0,em:"",nm:"",col:""};
   document.getElementById("feed").innerHTML="";
   S.rec.dives++;
 }
 function awardItem(o, fromEvent){
   const t=TIERS[o.it.tier];
+  const ti=TIER_ORDER.indexOf(o.it.tier);
   const zi=zoneFor(S.depth).i;
   let v=Math.round(t.val*(1+S.depth*0.16)*(1+zi*0.05)*(0.85+Math.random()*0.5)*valMult()*runEcho);
   if(runEcho>1 && !fromEvent) runEcho=1; // echo consumed by first natural find
   S.haul+=v;
   if(o.it.core) S.haulCore+=o.it.core;
+  if(v>runBest.v){ runBest={v,em:o.it.em,nm:o.it.nm,col:t.col}; }
   if(S.found[o.idx]===undefined){ S.found[o.idx]=S.depth; toast(`NEW: ${o.it.em} ${o.it.nm} discovered!`,"good"); renderCodex(); }
   pushFeed(o.it,v,t);
+  if(ti>=3) bump(ti>=4);            // shake on anomaly+
+  if(ti>=4) flashCol(t.col);        // screen flash on artifact+
 }
 function descend(){
   if(pendingEvent) return;
   if(!S.diving) beginDive();
   const toDepth=S.depth+1;
-  // gain instability (flat vents from Valve + Pressure Core reduce it)
-  let gain=(3.4+toDepth*0.42)*(0.7+Math.random()*0.7)*hullMult();
-  gain-=(S.up.valve*0.6 + S.cup.pcore*0.5);
-  S.instab=Math.min(100,Math.max(0,S.instab+Math.max(0.3,gain)));
+  const zi=zoneFor(toDepth).i;
+  // gain instability — deeper zones are inherently more unstable; vents can't fully cancel it
+  let gain=(4.1+toDepth*0.82)*(0.7+Math.random()*0.7)*hullMult()*(1+zi*0.16);
+  const flat=Math.min(gain*0.45, S.up.valve*0.6 + S.cup.pcore*0.5); // vent capped at 45% of the gain
+  gain-=flat;
+  S.instab=Math.min(100,Math.max(0,S.instab+Math.max(0.5,gain)));
   // rupture check
   if(Math.random()<ruptureChance()){ rupture(); return; }
   S.depth=toDepth;
   if(S.depth>S.rec.deepest) S.rec.deepest=S.depth;
+  // pot multiplier compounds the WHOLE haul — deeper & more unstable descents pay more
+  S.runMult += 0.05 + S.depth*0.004 + S.instab*0.003;
+  bumpDepth();
   // primary find
   awardItem(pickItem(toDepth));
   // Tractor Beam: chance at a bonus find
@@ -582,19 +654,30 @@ function descend(){
 function extract(){
   if(pendingEvent) return;
   if(!S.diving||S.haul<=0){ if(S.diving){S.diving=false;render();} return; }
-  S.scrap+=S.haul; S.core+=S.haulCore; S.rec.lifeScrap+=S.haul; S.rec.foldScrap+=S.haul;
-  if(S.haul>S.rec.bigHaul) S.rec.bigHaul=S.haul;
-  toast(`Extracted +${fmt(S.haul)} scrap${S.haulCore?` +${S.haulCore} cores`:""}`,"good");
-  S.diving=false; S.depth=startDepth(); S.instab=0; S.haul=0; S.haulCore=0; runEcho=1;
+  const bank=Math.round(S.haul*S.runMult);
+  S.scrap+=bank; S.core+=S.haulCore; S.rec.lifeScrap+=bank; S.rec.foldScrap+=bank;
+  if(bank>S.rec.bigHaul) S.rec.bigHaul=bank;
+  toast(`Extracted +${fmt(bank)} scrap (×${S.runMult.toFixed(2)})${S.haulCore?` +${S.haulCore} cores`:""}`,"good");
+  S.diving=false; S.depth=startDepth(); S.instab=0; S.haul=0; S.haulCore=0; S.runMult=1; runEcho=1; runBest={v:0,em:"",nm:"",col:""};
   document.getElementById("feed").innerHTML="";
   checkAch(); save(); render();
 }
 function rupture(){
   S.rec.ruptures++;
-  const lost=S.haul;
-  flashRed();
-  toast(`✖ RUPTURE at depth ${S.depth+1} — lost ${fmt(lost)} scrap${S.haulCore?` & ${S.haulCore} cores`:""}`,"bad");
-  S.diving=false; S.depth=startDepth(); S.instab=0; S.haul=0; S.haulCore=0; runEcho=1;
+  const lost=Math.round(S.haul*S.runMult);
+  const dep=S.depth;
+  flashRed(); bump(true);
+  // --- salvage from the wreck: deep busts still leave something behind ---
+  const frac=Math.min(0.5, 0.05 + (S.cup.cblackbox||0)*0.05);
+  const salv=Math.round(lost*frac);
+  const parts=[];
+  if(salv>0){ S.scrap+=salv; S.rec.lifeScrap+=salv; S.rec.foldScrap+=salv; S.rec.salvaged=(S.rec.salvaged||0)+salv; parts.push(`salvaged ${fmt(salv)} scrap`); }
+  // deep wrecks can cough up cores
+  if(dep>=12 && Math.random()<Math.min(0.55,(dep-10)*0.03)){ const bc=1+Math.floor(Math.max(0,dep-12)/15); S.core+=bc; parts.push(`+${bc} cores`); }
+  // the wreck sometimes yields a find — a bust can still complete the Codex
+  if(Math.random()<0.20){ const o=pickItem(Math.max(1,dep)); if(S.found[o.idx]===undefined){ S.found[o.idx]=dep; renderCodex(); parts.push(`recovered ${o.it.em} ${o.it.nm}`); } }
+  toast(`✖ RUPTURE @ depth ${dep+1} — lost ${fmt(lost)}${parts.length?" · "+parts.join(" · "):""}`,"bad");
+  S.diving=false; S.depth=startDepth(); S.instab=0; S.haul=0; S.haulCore=0; S.runMult=1; runEcho=1; runBest={v:0,em:"",nm:"",col:""};
   document.getElementById("feed").innerHTML="";
   checkAch(); save(); render();
 }
@@ -668,7 +751,14 @@ function render(){
   const zn=zoneFor(dep);
   const dn=document.getElementById("depth"); dn.textContent=dep; dn.style.color=zn.z.col;
   const zl=document.getElementById("zonelab"); zl.textContent=zn.z.nm; zl.style.color=zn.z.col;
+  const nextZ=ZONES[zn.i+1];
+  document.getElementById("zonenext").textContent = nextZ ? `${nextZ.d-dep} layers → ${nextZ.nm}` : "DEEPEST KNOWN LAYER";
+  const bf=document.getElementById("bestfind");
+  bf.innerHTML = (S.diving && runBest.v>0) ? `Best this run: <span style="color:${runBest.col}">${runBest.em}</span> ${runBest.nm} <b>+${fmt(runBest.v)}</b>` : "";
   document.getElementById("haul").textContent=fmt(S.haul);
+  document.getElementById("runmult").textContent="×"+S.runMult.toFixed(2);
+  const bank=Math.round(S.haul*S.runMult);
+  document.getElementById("bankval").textContent=fmt(bank);
   document.getElementById("haulcore").textContent=S.haulCore?` +${S.haulCore} cores`:"";
   document.getElementById("s-luck").textContent=luckMult().toFixed(2)+"×";
   document.getElementById("s-val").textContent=valMult().toFixed(2)+"×";
@@ -682,8 +772,12 @@ function render(){
   gp.textContent=Math.round(S.instab)+"%";
   gp.className="gpct"+(S.instab>safeZone()+30?" crit":S.instab>safeZone()?" warn":"");
   ga.className="gauge"+(rc>0.45?" danger2":rc>0.2?" danger":"");
-  // buttons
-  document.getElementById("btn-extract").disabled=(!S.diving||S.haul<=0);
+  // buttons — show the stakes of each choice right on the button
+  const bd=document.getElementById("btn-descend");
+  bd.innerHTML = "▼ Descend"+(S.diving&&showRisk?` <span style="opacity:.7">· ${(rc*100).toFixed(0)}% bust</span>`:"");
+  const be=document.getElementById("btn-extract");
+  be.disabled=(!S.diving||S.haul<=0);
+  be.innerHTML = (S.diving&&bank>0)?`▲ Bank ${fmt(bank)}`:"▲ Extract";
   // auto state
   const aOn=S.auto.on&&S.up.auto>0;
   document.getElementById("auto-state").textContent=aOn?"on":"off";
@@ -709,9 +803,16 @@ function openEvent(ev){
   document.getElementById("evt-em").textContent=ev.em;
   document.getElementById("evt-nm").textContent=ev.nm;
   document.getElementById("evt-desc").textContent=ev.desc;
+  const rc=Math.round(ruptureChance()*100);
+  document.getElementById("evt-state").innerHTML=
+    `<span>instability <b class="${S.instab>safeZone()?"r":""}">${Math.round(S.instab)}%</b></span>`+
+    `<span>multiplier <b>×${S.runMult.toFixed(2)}</b></span>`+
+    `<span>pot at stake <b>${fmt(Math.round(S.haul*S.runMult))}</b></span>`+
+    `<span>next bust <b class="r">${S.up.scan>0?rc+"%":"?"}</b></span>`;
   const cw=document.getElementById("evt-choices"); cw.innerHTML="";
   ev.ch.forEach(c=>{
-    const b=document.createElement("button"); b.className="btn"; b.textContent=c.t;
+    const b=document.createElement("button"); b.className="btn";
+    b.innerHTML=`<span class="ct">${c.t}</span>`+(c.note?`<span class="cn">${c.note()}</span>`:"");
     b.onclick=()=>{ const raw=c.raw; c.fn(); if(!raw){ pendingEvent=null; closeEvent(); checkAch(); save(); render(); } };
     cw.appendChild(b);
   });
@@ -785,6 +886,7 @@ function renderRec(){
     ["Biggest single haul", fmt(r.bigHaul)+" scrap"],
     ["Total dives launched", fmt(r.dives)],
     ["Drones ruptured", fmt(r.ruptures)],
+    ["Scrap salvaged from wrecks", fmt(r.salvaged||0)],
     ["Lifetime scrap banked", fmt(r.lifeScrap)],
     ["Times folded", S.folds],
     ["Survival rate", r.dives?Math.round((1-r.ruptures/r.dives)*100)+"%":"—"],
@@ -800,11 +902,21 @@ function toast(msg,kind){
   setTimeout(()=>{d.style.opacity="0";d.style.transition="opacity .4s";setTimeout(()=>d.remove(),400);},2600);
   while(t.children.length>4) t.removeChild(t.firstChild);
 }
-function flashRed(){ const f=document.getElementById("flash"); f.classList.add("go"); setTimeout(()=>f.classList.remove("go"),160); }
+function flashCol(col){ const f=document.getElementById("flash"); f.style.background=col; f.classList.add("go"); setTimeout(()=>f.classList.remove("go"),160); }
+function flashRed(){ flashCol("var(--red)"); }
+function bump(big){ const c=document.getElementById("console-card"); if(!c)return; c.classList.remove("shake","big"); void c.offsetWidth; c.classList.add("shake"); if(big)c.classList.add("big"); setTimeout(()=>c.classList.remove("shake","big"),big?520:320); }
+function bumpDepth(){ const d=document.getElementById("depth"); if(!d)return; d.classList.remove("pop"); void d.offsetWidth; d.classList.add("pop"); setTimeout(()=>d.classList.remove("pop"),260); }
 
 /* ============ WIRING ============ */
 function wire(){
   document.getElementById("btn-descend").onclick=()=>descend();
+  // press-and-hold to keep descending
+  (function(){
+    const b=document.getElementById("btn-descend"); let hold=null;
+    const start=e=>{ if(hold)return; hold=setInterval(()=>{ if(pendingEvent||!S.diving){clearInterval(hold);hold=null;return;} descend(); },150); };
+    const stop=()=>{ if(hold){clearInterval(hold);hold=null;} };
+    b.addEventListener("pointerdown",start); ["pointerup","pointerleave","pointercancel"].forEach(ev=>b.addEventListener(ev,stop));
+  })();
   document.getElementById("btn-extract").onclick=()=>extract();
   // tabs
   document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
@@ -825,9 +937,10 @@ function wire(){
   rCt.oninput=()=>{ S.auto.count=+rCt.value; document.getElementById("v-count").textContent=rCt.value; save(); };
   syncSet();
   // keyboard
+  let lastKeyDive=0;
   document.addEventListener("keydown",e=>{
     if(e.target.tagName==="INPUT")return;
-    if(e.code==="Space"||e.key.toLowerCase()==="d"){e.preventDefault();descend();}
+    if(e.code==="Space"||e.key.toLowerCase()==="d"){e.preventDefault(); if(e.repeat && Date.now()-lastKeyDive<120)return; lastKeyDive=Date.now(); descend();}
     if(e.key.toLowerCase()==="e"){extract();}
   });
   // data
