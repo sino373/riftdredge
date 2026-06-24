@@ -94,7 +94,10 @@ body{
 .buy:hover{border-color:var(--gold)} .buy:disabled{opacity:.35;cursor:not-allowed;color:var(--text3)}
 .buy.core{color:var(--cyan)} .buy.core:hover{border-color:var(--cyan)}
 
-.codexgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px}
+.codexgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;max-height:360px;overflow-y:auto;padding-right:4px}
+.codexgrid::-webkit-scrollbar{width:6px}
+.codexgrid::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+.codexgrid{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
 .cx{aspect-ratio:1;border:1px solid var(--line);border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:var(--void2);cursor:default;position:relative}
 .cx .e{font-size:1.4rem;filter:grayscale(1) brightness(.5)}
 .cx.found .e{filter:none}
